@@ -74,6 +74,8 @@ int main(int argc, char* argv[]) {
         if (blockSizeOverride > 0)
             config.blockSize = blockSizeOverride;
 
+        config.validate();
+
         // Create output directory
         juce::File outDir(outPath);
         if (!outDir.exists()) {
@@ -148,11 +150,7 @@ int main(int argc, char* argv[]) {
         runMeasurementGrid(*plugin, config.sampleRate, config.blockSize, totalSamples, runs, analyzers, config, outDir,
                            nullptr, numThreads);
 
-        // Finish analyzers
-        std::cout << "Finalizing analyzers..." << std::endl;
-        for (auto& analyzer : analyzers) {
-            analyzer->finish(outDir);
-        }
+        // (runMeasurementGrid finishes the analyzers and writes their output)
 
         std::cout << "Measurement complete!" << std::endl;
 

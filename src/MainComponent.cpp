@@ -414,6 +414,13 @@ void MainComponent::runMeasurement() {
     Config config = buildConfigFromUI();
     config.pluginPath = pluginPathEditor.getText();
 
+    try {
+        config.validate();
+    } catch (const std::exception& e) {
+        showError(e.what());
+        return;
+    }
+
     // Run measurement in background thread
     runMeasurementButton.setEnabled(false);
     progressLabel.setText("Running measurement...", juce::dontSendNotification);
@@ -542,12 +549,7 @@ void MainComponent::runMeasurement() {
                 numThreads);
             std::cerr << "[Measurement] Measurement grid complete" << std::endl;
 
-            // Finish analyzers
-            std::cerr << "[Measurement] Finishing analyzers..." << std::endl;
-            for (auto& analyzer : analyzers) {
-                analyzer->finish(outDir);
-            }
-            std::cerr << "[Measurement] All analyzers finished" << std::endl;
+            // (runMeasurementGrid finishes the analyzers and writes their output)
 
             juce::MessageManager::callAsync([this]() {
                 progressLabel.setText("Measurement complete!", juce::dontSendNotification);

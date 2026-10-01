@@ -1,4 +1,5 @@
 #include "Config.h"
+#include <cmath>
 #include <fstream>
 #include <sstream>
 
@@ -98,4 +99,13 @@ Config Config::fromJsonString(const juce::String& jsonString) {
     }
 
     return config;
+}
+
+void Config::validate() const {
+    if (!std::isfinite(sampleRate) || sampleRate < 8000.0 || sampleRate > 768000.0)
+        throw std::runtime_error("Invalid sampleRate " + std::to_string(sampleRate) + " (expected 8000-768000)");
+    if (!std::isfinite(seconds) || seconds <= 0.0 || seconds > 86400.0)
+        throw std::runtime_error("Invalid seconds " + std::to_string(seconds) + " (expected > 0 and <= 86400)");
+    if (blockSize < 1 || blockSize > 65536)
+        throw std::runtime_error("Invalid blockSize " + std::to_string(blockSize) + " (expected 1-65536)");
 }

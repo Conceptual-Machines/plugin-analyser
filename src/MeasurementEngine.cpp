@@ -170,7 +170,8 @@ static void processRun(const RunConfig& run, juce::AudioPluginInstance& plugin,
         // Copy input to output buffer (processBlock works in-place)
         outputBuffer.makeCopyOf(inputBuffer);
 
-        // Process through plugin (modifies outputBuffer in-place)
+        // Process through plugin (modifies outputBuffer in-place); don't feed back any MIDI it produced
+        midiBuffer.clear();
         plugin.processBlock(outputBuffer, midiBuffer);
 
         // Build BlockContext

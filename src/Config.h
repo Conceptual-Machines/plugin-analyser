@@ -26,6 +26,9 @@ struct Config {
     std::vector<ParameterBucketConfig> parameterBuckets;
     std::vector<juce::String> analyzers;
 
+    // Throws std::runtime_error if sampleRate, seconds or blockSize are unusable
+    void validate() const;
+
     static Config fromJson(const juce::File& jsonFile);
     static Config fromJsonString(const juce::String& jsonString);
 };

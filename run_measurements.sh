@@ -33,7 +33,7 @@ TEMP_CONFIG_DIR="$PLUGIN_ANALYSER_DIR/temp_configs"
 
 # Configuration
 SAMPLE_RATE=48000
-SECONDS=5
+DURATION_SECONDS=5
 BLOCK_SIZE=256
 NUM_BUCKETS=3
 INPUT_GAIN_BUCKETS=(-24.0 0.0 24.0)
@@ -242,7 +242,7 @@ generate_config() {
 {
   "pluginPath": "$PLUGIN_PATH",
   "sampleRate": $SAMPLE_RATE,
-  "seconds": $SECONDS,
+  "seconds": $DURATION_SECONDS,
   "blockSize": $BLOCK_SIZE,
   "signalType": "$signal_type",
   "sineFrequency": $SINE_FREQ,
