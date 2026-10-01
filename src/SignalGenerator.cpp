@@ -43,28 +43,35 @@ void SweepGenerator::fillBlock(juce::AudioBuffer<float>& buffer, int numSamples)
     const double logStart = std::log(startHz);
     const double logEnd = std::log(endHz);
 
-    for (int ch = 0; ch < buffer.getNumChannels(); ++ch) {
-        auto* channelData = buffer.getWritePointer(ch);
+    const int numChannels = buffer.getNumChannels();
+    if (numChannels == 0)
+        return;
 
-        for (int i = 0; i < numSamples; ++i) {
-            if (currentSample >= totalSamples) {
-                channelData[i] = 0.0f;
-                continue;
-            }
+    // Advance the sweep once per sample (not once per channel), writing channel 0
+    auto* firstChannel = buffer.getWritePointer(0);
 
-            // Logarithmic sweep
-            double t = (double)currentSample / (double)totalSamples;
-            double logFreq = logStart + t * (logEnd - logStart);
-            currentFreq = std::exp(logFreq);
-
-            const double phaseIncrement = 2.0 * juce::MathConstants<double>::pi * currentFreq / sampleRate;
-            channelData[i] = amplitude * (float)std::sin(currentPhase);
-
-            currentPhase += phaseIncrement;
-            if (currentPhase > 2.0 * juce::MathConstants<double>::pi)
-                currentPhase -= 2.0 * juce::MathConstants<double>::pi;
-
-            currentSample++;
+    for (int i = 0; i < numSamples; ++i) {
+        if (currentSample >= totalSamples) {
+            firstChannel[i] = 0.0f;
+            continue;
         }
+
+        // Logarithmic sweep
+        double t = (double)currentSample / (double)totalSamples;
+        double logFreq = logStart + t * (logEnd - logStart);
+        currentFreq = std::exp(logFreq);
+
+        const double phaseIncrement = 2.0 * juce::MathConstants<double>::pi * currentFreq / sampleRate;
+        firstChannel[i] = amplitude * (float)std::sin(currentPhase);
+
+        currentPhase += phaseIncrement;
+        if (currentPhase > 2.0 * juce::MathConstants<double>::pi)
+            currentPhase -= 2.0 * juce::MathConstants<double>::pi;
+
+        currentSample++;
     }
+
+    // Every channel carries the identical sweep
+    for (int ch = 1; ch < numChannels; ++ch)
+        buffer.copyFrom(ch, 0, buffer, 0, 0, numSamples);
 }

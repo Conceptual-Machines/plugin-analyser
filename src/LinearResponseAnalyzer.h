@@ -31,9 +31,9 @@ private:
     std::vector<juce::String> paramNames;
     juce::File outputDir;
     juce::String signalType;
+    std::vector<float> window;
 
     void processFFTWindow(RunSpectrum& spectrum);
-    void applyHannWindow(std::vector<float>& buffer);
 };
 
 std::unique_ptr<Analyzer> createLinearResponseAnalyzer(const juce::File& outDir, int fftSize,
