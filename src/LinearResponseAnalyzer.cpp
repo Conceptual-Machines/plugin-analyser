@@ -3,6 +3,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 LinearResponseAnalyzer::LinearResponseAnalyzer(const juce::File& outDir, int fftSize,
                                                const std::vector<juce::String>& paramNames,
@@ -89,10 +90,8 @@ void LinearResponseAnalyzer::finish(const juce::File& outDir) {
     juce::File csvFile = outDir.getChildFile(filename);
     std::ofstream out(csvFile.getFullPathName().toStdString());
 
-    if (!out.is_open()) {
-        std::cerr << "Failed to open " << filename.toStdString() << " for writing" << std::endl;
-        return;
-    }
+    if (!out.is_open())
+        throw std::runtime_error("Failed to open " + csvFile.getFullPathName().toStdString() + " for writing");
 
     // Header
     out << "runId,freqHz,magDb";
@@ -134,6 +133,10 @@ void LinearResponseAnalyzer::finish(const juce::File& outDir) {
             out << "," << spectrum.inputGainDb << "\n";
         }
     }
+
+    out.close();
+    if (out.fail())
+        throw std::runtime_error("Failed to write " + csvFile.getFullPathName().toStdString());
 }
 
 std::unique_ptr<Analyzer> createLinearResponseAnalyzer(const juce::File& outDir, int fftSize,

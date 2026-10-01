@@ -2,6 +2,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 RmsPeakAnalyzer::RmsPeakAnalyzer(const juce::File& outDir, const std::vector<juce::String>& paramNames,
                                  const juce::String& signalType)
@@ -52,10 +53,8 @@ void RmsPeakAnalyzer::finish(const juce::File& outDir) {
     juce::File csvFile = outDir.getChildFile(filename);
     std::ofstream out(csvFile.getFullPathName().toStdString());
 
-    if (!out.is_open()) {
-        std::cerr << "Failed to open " << filename.toStdString() << " for writing" << std::endl;
-        return;
-    }
+    if (!out.is_open())
+        throw std::runtime_error("Failed to open " + csvFile.getFullPathName().toStdString() + " for writing");
 
     // Header
     out << "runId";
@@ -99,6 +98,10 @@ void RmsPeakAnalyzer::finish(const juce::File& outDir) {
         out << "," << stats.peakInL << "," << stats.peakInR << "," << stats.peakOutL << "," << stats.peakOutR;
         out << "\n";
     }
+
+    out.close();
+    if (out.fail())
+        throw std::runtime_error("Failed to write " + csvFile.getFullPathName().toStdString());
 }
 
 std::unique_ptr<Analyzer> createRmsPeakAnalyzer(const juce::File& outDir, const std::vector<juce::String>& paramNames,

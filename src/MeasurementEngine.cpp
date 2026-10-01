@@ -13,6 +13,7 @@
 #include <iostream>
 #include <mutex>
 #include <queue>
+#include <stdexcept>
 #include <thread>
 
 std::vector<RunConfig> buildRunGrid(const Config& config, const std::vector<juce::String>& paramNames) {
@@ -214,6 +215,27 @@ void runMeasurementGrid(juce::AudioPluginInstance& plugin, double sampleRate, in
     std::cerr << "[runMeasurementGrid] Starting with " << runs.size() << " runs, " << totalSamples
               << " samples per run, " << numThreads << " thread(s)" << std::endl;
 
+    // Refuse to start, rather than finishing "successfully" with empty or meaningless CSVs
+    if (runs.empty())
+        throw std::runtime_error(
+            "The measurement grid has no runs (check inputGainBucketsDb and the parameter values)");
+    if (analyzers.empty())
+        throw std::runtime_error("No analyzers to run (check the analyzer names and that they suit the signal type)");
+    if (!config.signalType.equalsIgnoreCase("sine") && !config.signalType.equalsIgnoreCase("noise") &&
+        !config.signalType.equalsIgnoreCase("sweep"))
+        throw std::runtime_error("Unknown signalType '" + config.signalType.toStdString() +
+                                 "' (expected sine, noise or sweep)");
+    {
+        const auto available = buildParameterMap(plugin, false);
+        juce::StringArray missing;
+        for (const auto& bucket : config.parameterBuckets)
+            if (available.find(bucket.paramName.trim().toLowerCase()) == available.end())
+                missing.add(bucket.paramName);
+        if (!missing.isEmpty())
+            throw std::runtime_error("The plugin has no parameter named: " +
+                                     missing.joinIntoString(", ").toStdString());
+    }
+
     // Build parameter name list in order
     std::vector<juce::String> paramNames;
     for (const auto& bucket : config.parameterBuckets) {
@@ -255,9 +277,8 @@ void runMeasurementGrid(juce::AudioPluginInstance& plugin, double sampleRate, in
             juce::String errorMessage;
             auto plugin = loadPluginInstance(juce::File(config.pluginPath), sampleRate, blockSize, errorMessage);
             if (!plugin) {
-                std::cerr << "[runMeasurementGrid] Failed to load plugin instance " << i << ": " << errorMessage
-                          << std::endl;
-                return; // Can't continue without all instances
+                throw std::runtime_error("Failed to load plugin instance " + std::to_string(i + 1) + " of " +
+                                         std::to_string(numThreads) + ": " + errorMessage.toStdString());
             }
             auto paramMap = buildParameterMap(*plugin, false);
             pluginInstances.push_back(std::move(plugin));

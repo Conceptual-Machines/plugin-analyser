@@ -4,6 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 ThdAnalyzer::ThdAnalyzer(const juce::File& outDir, int fftSize, double fundamentalFreq,
                          const std::vector<juce::String>& paramNames, const juce::String& signalType)
@@ -107,10 +108,8 @@ void ThdAnalyzer::finish(const juce::File& outDir) {
     juce::File csvFile = outDir.getChildFile(filename);
     std::ofstream out(csvFile.getFullPathName().toStdString());
 
-    if (!out.is_open()) {
-        std::cerr << "Failed to open " << filename.toStdString() << " for writing" << std::endl;
-        return;
-    }
+    if (!out.is_open())
+        throw std::runtime_error("Failed to open " + csvFile.getFullPathName().toStdString() + " for writing");
 
     // Header
     out << "runId,centreSample,thd";
@@ -136,6 +135,10 @@ void ThdAnalyzer::finish(const juce::File& outDir) {
             out << "," << data.inputGainDb << "\n";
         }
     }
+
+    out.close();
+    if (out.fail())
+        throw std::runtime_error("Failed to write " + csvFile.getFullPathName().toStdString());
 }
 
 std::unique_ptr<Analyzer> createThdAnalyzer(const juce::File& outDir, int fftSize, double fundamentalFreq,

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 TransferCurveAnalyzer::TransferCurveAnalyzer(const juce::File& outDir, int numBins,
                                              const std::vector<juce::String>& paramNames,
@@ -49,10 +50,8 @@ void TransferCurveAnalyzer::finish(const juce::File& outDir) {
     juce::File csvFile = outDir.getChildFile(filename);
     std::ofstream out(csvFile.getFullPathName().toStdString());
 
-    if (!out.is_open()) {
-        std::cerr << "Failed to open " << filename.toStdString() << " for writing" << std::endl;
-        return;
-    }
+    if (!out.is_open())
+        throw std::runtime_error("Failed to open " + csvFile.getFullPathName().toStdString() + " for writing");
 
     // Header
     out << "runId,binIndex,x,meanY,count";
@@ -85,6 +84,10 @@ void TransferCurveAnalyzer::finish(const juce::File& outDir) {
             out << "," << runData.inputGainDb << "\n";
         }
     }
+
+    out.close();
+    if (out.fail())
+        throw std::runtime_error("Failed to write " + csvFile.getFullPathName().toStdString());
 }
 
 std::unique_ptr<Analyzer> createTransferCurveAnalyzer(const juce::File& outDir, int numBins,
