@@ -24,7 +24,8 @@ double ThdAnalyzer::computeTHD(const std::vector<std::complex<float>>& fftResult
     const double binHz = sampleRate / (double)fftSize;
     const int k0 = (int)std::round(fundamentalFreq / binHz);
 
-    if (k0 < 0 || k0 >= fftSize / 2)
+    // k0 == 0: fundamental is below half a bin, so it can't be resolved (and would divide by zero below)
+    if (k0 < 1 || k0 >= fftSize / 2)
         return 0.0;
 
     // Fundamental power
@@ -62,15 +63,16 @@ void ThdAnalyzer::processFFTWindow(RunThdData& data, int64_t centreSample) {
 
     // Perform FFT
     juce::dsp::FFT fft((int)std::log2(fftSize));
+    std::vector<std::complex<float>> timeData(fftSize);
     std::vector<std::complex<float>> fftResult(fftSize);
 
     // Copy to complex buffer
     for (int i = 0; i < fftSize; ++i) {
-        fftResult[i] = std::complex<float>(data.buffer[i], 0.0f);
+        timeData[i] = std::complex<float>(data.buffer[i], 0.0f);
     }
 
-    // Perform FFT (in-place)
-    fft.perform(fftResult.data(), fftResult.data(), false);
+    // Perform FFT (out-of-place: JUCE's fallback FFT engine does not support input == output)
+    fft.perform(timeData.data(), fftResult.data(), false);
 
     // Compute THD
     double thd = computeTHD(fftResult, data.sampleRate);
