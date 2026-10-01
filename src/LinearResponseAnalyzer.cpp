@@ -29,17 +29,20 @@ void LinearResponseAnalyzer::processFFTWindow(RunSpectrum& spectrum) {
 
     // Perform FFT
     juce::dsp::FFT fft((int)std::log2(fftSize));
+    std::vector<std::complex<float>> inTime(fftSize);
+    std::vector<std::complex<float>> outTime(fftSize);
     std::vector<std::complex<float>> inFFT(fftSize);
     std::vector<std::complex<float>> outFFT(fftSize);
 
     // Copy to complex buffers
     for (int i = 0; i < fftSize; ++i) {
-        inFFT[i] = std::complex<float>(spectrum.inBuffer[i], 0.0f);
-        outFFT[i] = std::complex<float>(spectrum.outBuffer[i], 0.0f);
+        inTime[i] = std::complex<float>(spectrum.inBuffer[i], 0.0f);
+        outTime[i] = std::complex<float>(spectrum.outBuffer[i], 0.0f);
     }
 
-    // Perform FFT
-    fft.perform(inFFT.data(), outFFT.data(), false);
+    // Transform input and output separately (FFT::perform is input -> output, out-of-place)
+    fft.perform(inTime.data(), inFFT.data(), false);
+    fft.perform(outTime.data(), outFFT.data(), false);
 
     // Accumulate magnitude squared
     const int numBins = fftSize / 2;
