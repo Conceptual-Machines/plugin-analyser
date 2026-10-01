@@ -102,6 +102,22 @@ std::unique_ptr<juce::AudioPluginInstance> loadPluginInstance(const juce::File& 
         return nullptr;
     }
 
+    // Host the main buses only (no sidechain/aux), in stereo where supported, falling back to mono.
+    // Without this the plugin keeps whatever default layout it chose, which may not match our buffers.
+    instance->disableNonMainBuses();
+    for (const auto& channelSet : {juce::AudioChannelSet::stereo(), juce::AudioChannelSet::mono()}) {
+        auto layout = instance->getBusesLayout();
+        if (!layout.inputBuses.isEmpty())
+            layout.inputBuses.getReference(0) = channelSet;
+        if (!layout.outputBuses.isEmpty())
+            layout.outputBuses.getReference(0) = channelSet;
+        if (instance->setBusesLayout(layout))
+            break;
+    }
+
+    std::cerr << "[loadPluginInstance] Bus layout: " << instance->getTotalNumInputChannels() << " in, "
+              << instance->getTotalNumOutputChannels() << " out" << std::endl;
+
     std::cerr << "[loadPluginInstance] Instance created, preparing to play..." << std::endl;
 
     instance->prepareToPlay(sampleRate, blockSize);

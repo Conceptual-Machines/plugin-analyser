@@ -146,8 +146,14 @@ static void processRun(const RunConfig& run, juce::AudioPluginInstance& plugin,
     }
 
     // Process samples
+    // The process buffer must hold every channel of the plugin's active buses, otherwise the
+    // plugin reads/writes channel pointers past the end of the buffer.
+    const int numPluginIns = plugin.getTotalNumInputChannels();
+    const int numPluginOuts = plugin.getTotalNumOutputChannels();
+    const int numProcessChannels = std::max({numPluginIns, numPluginOuts, 1});
+
     juce::AudioBuffer<float> inputBuffer(2, blockSize);
-    juce::AudioBuffer<float> outputBuffer(2, blockSize);
+    juce::AudioBuffer<float> outputBuffer(numProcessChannels, blockSize);
     juce::MidiBuffer midiBuffer;
 
     int64_t currentSample = 0;
@@ -168,7 +174,9 @@ static void processRun(const RunConfig& run, juce::AudioPluginInstance& plugin,
         }
 
         // Copy input to output buffer (processBlock works in-place)
-        outputBuffer.makeCopyOf(inputBuffer);
+        // (only into the channels the plugin actually has as inputs; the rest stay cleared)
+        for (int ch = 0; ch < std::min(numPluginIns, inputBuffer.getNumChannels()); ++ch)
+            outputBuffer.copyFrom(ch, 0, inputBuffer, ch, 0, numThisBlock);
 
         // Process through plugin (modifies outputBuffer in-place)
         plugin.processBlock(outputBuffer, midiBuffer);
@@ -181,7 +189,7 @@ static void processRun(const RunConfig& run, juce::AudioPluginInstance& plugin,
         ctx.inL = inputBuffer.getReadPointer(0);
         ctx.inR = inputBuffer.getNumChannels() > 1 ? inputBuffer.getReadPointer(1) : nullptr;
         ctx.outL = outputBuffer.getReadPointer(0);
-        ctx.outR = outputBuffer.getNumChannels() > 1 ? outputBuffer.getReadPointer(1) : nullptr;
+        ctx.outR = numPluginOuts > 1 ? outputBuffer.getReadPointer(1) : nullptr;
         ctx.runId = run.runId;
         ctx.paramNamedValues = run.paramValues;
         ctx.inputGainDb = run.inputGainDb;
