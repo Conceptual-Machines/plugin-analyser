@@ -17,6 +17,7 @@ struct Config {
     juce::String pluginPath;
     double sampleRate = 48000.0;
     double seconds = 5.0;
+    double preRollSeconds = 0.1; // silence rendered after reset() and before each run, not measured
     int blockSize = 256;
     juce::String signalType; // "sine", "noise", "sweep"
     double sineFrequency = 1000.0;

@@ -104,6 +104,8 @@ std::unique_ptr<juce::AudioPluginInstance> loadPluginInstance(const juce::File& 
 
     std::cerr << "[loadPluginInstance] Instance created, preparing to play..." << std::endl;
 
+    // Rendering is offline: let plugins use their offline/bounce quality (oversampling, lookahead, etc.)
+    instance->setNonRealtime(true);
     instance->prepareToPlay(sampleRate, blockSize);
 
     std::cerr << "[loadPluginInstance] Plugin ready!" << std::endl;

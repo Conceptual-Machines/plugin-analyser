@@ -1,4 +1,5 @@
 #include "Config.h"
+#include <cmath>
 #include <fstream>
 #include <sstream>
 
@@ -30,6 +31,12 @@ Config Config::fromJsonString(const juce::String& jsonString) {
         config.sampleRate = (double)root->getProperty("sampleRate");
     if (root->hasProperty("seconds"))
         config.seconds = (double)root->getProperty("seconds");
+    if (root->hasProperty("preRollSeconds")) {
+        config.preRollSeconds = (double)root->getProperty("preRollSeconds");
+        if (!std::isfinite(config.preRollSeconds) || config.preRollSeconds < 0.0 || config.preRollSeconds > 60.0)
+            throw std::runtime_error("Invalid preRollSeconds " + std::to_string(config.preRollSeconds) +
+                                     " (expected 0-60)");
+    }
     if (root->hasProperty("blockSize"))
         config.blockSize = (int)root->getProperty("blockSize");
 

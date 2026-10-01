@@ -150,9 +150,31 @@ static void processRun(const RunConfig& run, juce::AudioPluginInstance& plugin,
     juce::AudioBuffer<float> outputBuffer(2, blockSize);
     juce::MidiBuffer midiBuffer;
 
+    // Start every run from a clean state, so results don't depend on the previous run (reverb tails,
+    // compressor envelopes, filter memory) or, with several threads, on which run an instance did last
+    plugin.reset();
+
+    // Pre-roll silence so parameter smoothing settles on the new values before anything is measured
+    const int64_t preRollSamples = (int64_t)(std::max(0.0, config.preRollSeconds) * sampleRate);
+    for (int64_t done = 0; done < preRollSamples; done += blockSize) {
+        outputBuffer.clear();
+        midiBuffer.clear(); // don't accumulate MIDI the plugin emits during the pre-roll
+        plugin.processBlock(outputBuffer, midiBuffer);
+    }
+
+    // The output lags the input by the plugin's latency (queried after the parameters have taken effect).
+    // Render that many extra samples, drop the first `latency` output samples, and pair each output sample
+    // with the input from `latency` samples earlier.
+    const int latency = std::max(0, plugin.getLatencySamples());
+    const int64_t renderSamples = totalSamples + latency;
+    juce::AudioBuffer<float> delayedInput(2, blockSize);
+    juce::AudioBuffer<float> delayLine(2, std::max(latency, 1));
+    delayLine.clear();
+    int delayPos = 0;
+
     int64_t currentSample = 0;
-    while (currentSample < totalSamples) {
-        int numThisBlock = (int)std::min((int64_t)blockSize, totalSamples - currentSample);
+    while (currentSample < renderSamples) {
+        int numThisBlock = (int)std::min((int64_t)blockSize, renderSamples - currentSample);
 
         // Clear buffers
         inputBuffer.clear();
@@ -173,15 +195,38 @@ static void processRun(const RunConfig& run, juce::AudioPluginInstance& plugin,
         // Process through plugin (modifies outputBuffer in-place)
         plugin.processBlock(outputBuffer, midiBuffer);
 
+        // Delay the input by `latency` samples so it lines up with the output
+        for (int ch = 0; ch < 2; ++ch) {
+            if (latency == 0) {
+                delayedInput.copyFrom(ch, 0, inputBuffer, ch, 0, numThisBlock);
+                continue;
+            }
+            int pos = delayPos;
+            for (int i = 0; i < numThisBlock; ++i) {
+                delayedInput.setSample(ch, i, delayLine.getSample(ch, pos));
+                delayLine.setSample(ch, pos, inputBuffer.getSample(ch, i));
+                pos = (pos + 1) % latency;
+            }
+        }
+        if (latency > 0)
+            delayPos = (int)((delayPos + numThisBlock) % latency);
+
+        // Output samples before index `latency` correspond to no input sample: skip them
+        const int skip = (int)std::clamp<int64_t>((int64_t)latency - currentSample, 0, numThisBlock);
+        if (skip == numThisBlock) {
+            currentSample += numThisBlock;
+            continue;
+        }
+
         // Build BlockContext
         BlockContext ctx;
-        ctx.firstSample = currentSample;
+        ctx.firstSample = currentSample + skip - latency;
         ctx.sampleRate = sampleRate;
-        ctx.numSamples = numThisBlock;
-        ctx.inL = inputBuffer.getReadPointer(0);
-        ctx.inR = inputBuffer.getNumChannels() > 1 ? inputBuffer.getReadPointer(1) : nullptr;
-        ctx.outL = outputBuffer.getReadPointer(0);
-        ctx.outR = outputBuffer.getNumChannels() > 1 ? outputBuffer.getReadPointer(1) : nullptr;
+        ctx.numSamples = numThisBlock - skip;
+        ctx.inL = delayedInput.getReadPointer(0) + skip;
+        ctx.inR = delayedInput.getReadPointer(1) + skip;
+        ctx.outL = outputBuffer.getReadPointer(0) + skip;
+        ctx.outR = outputBuffer.getNumChannels() > 1 ? outputBuffer.getReadPointer(1) + skip : nullptr;
         ctx.runId = run.runId;
         ctx.paramNamedValues = run.paramValues;
         ctx.inputGainDb = run.inputGainDb;
