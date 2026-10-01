@@ -54,17 +54,20 @@ std::unique_ptr<juce::AudioPluginInstance> loadPluginInstance(const juce::File& 
         std::cerr << "[loadPluginInstance] Checking format " << i << ": " << formatName << std::endl;
 
         if (format->fileMightContainThisPluginType(pluginPath)) {
-            std::cerr << "[loadPluginInstance] Format " << formatName << " might contain plugin, scanning..." << std::endl;
+            std::cerr << "[loadPluginInstance] Format " << formatName << " might contain plugin, scanning..."
+                      << std::endl;
             foundFormat = true;
             juce::OwnedArray<juce::PluginDescription> found;
             format->findAllTypesForFile(found, pluginPath);
             std::cerr << "[loadPluginInstance] Scan complete, found " << found.size() << " plugin(s)" << std::endl;
             if (found.size() > 0) {
                 description = *found[0];
-                std::cerr << "[loadPluginInstance] Found plugin: " << description.name << " (" << formatName << ")" << std::endl;
+                std::cerr << "[loadPluginInstance] Found plugin: " << description.name << " (" << formatName << ")"
+                          << std::endl;
                 break;
             } else {
-                std::cerr << "[loadPluginInstance] Format " << formatName << " recognized file but found no plugins" << std::endl;
+                std::cerr << "[loadPluginInstance] Format " << formatName << " recognized file but found no plugins"
+                          << std::endl;
             }
         } else {
             std::cerr << "[loadPluginInstance] Format " << formatName << " does not match file type" << std::endl;

@@ -37,10 +37,10 @@ cmake --build . --parallel
 
 ### Using Local JUCE
 
-If you have a local JUCE installation, the build system will automatically use it (faster builds):
+By default CMake downloads the pinned JUCE release. To build against a local JUCE checkout instead:
 
 ```bash
-# Place JUCE in ~/JUCE or update CMakeLists.txt with your path
+cmake -S . -B build -G Ninja -DPLUGIN_ANALYSER_JUCE_SOURCE_DIR=/path/to/JUCE
 ```
 
 ## Code Style

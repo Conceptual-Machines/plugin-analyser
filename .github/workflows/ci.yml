@@ -16,12 +16,14 @@ jobs:
 
     - name: Setup clang-format
       run: |
-        sudo apt-get update
-        sudo apt-get install -y clang-format
+        # Pinned so formatting results don't change with the runner image
+        pip install clang-format==18.1.8
+        clang-format --version
 
     - name: Check code formatting
       run: |
-        find src -type f \( -name "*.cpp" -o -name "*.h" \) -exec clang-format --dry-run --Werror {} \;
+        # xargs (unlike find -exec ... \;) propagates clang-format's failure exit code
+        find src -type f \( -name "*.cpp" -o -name "*.h" \) -print0 | xargs -0 clang-format --dry-run --Werror
 
     - name: Run pre-commit
       uses: pre-commit/action@v3.0.0

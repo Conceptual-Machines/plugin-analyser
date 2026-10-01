@@ -5,28 +5,28 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # JUCE setup
-# Note: You'll need to set JUCE_DIR or use FetchContent
-# For now, we'll assume JUCE is available via find_package or FetchContent
+# By default the pinned JUCE release below is downloaded (and checksum-verified) via FetchContent.
+# To build against a local JUCE checkout instead: -DPLUGIN_ANALYSER_JUCE_SOURCE_DIR=/path/to/JUCE
 
-# Try to use local JUCE installation first (faster builds)
-set(JUCE_DIR "~/JUCE")
-get_filename_component(JUCE_DIR ${JUCE_DIR} ABSOLUTE)
+set(PLUGIN_ANALYSER_JUCE_SOURCE_DIR "" CACHE PATH "Local JUCE checkout to use instead of the pinned download")
+option(PLUGIN_ANALYSER_USE_FETCH_JUCE "Use FetchContent to get JUCE if no local checkout is given" ON)
 
-option(PLUGIN_ANALYSER_USE_FETCH_JUCE "Use FetchContent to get JUCE if local not found" ON)
-
-if(EXISTS ${JUCE_DIR}/CMakeLists.txt)
-    message(STATUS "Using local JUCE installation at ${JUCE_DIR}")
-    add_subdirectory(${JUCE_DIR} ${CMAKE_BINARY_DIR}/juce)
-    set(JUCE_ENABLE_MODULE_SOURCE_GROUPS OFF)
-    set(JUCE_BUILD_EXTRAS OFF)
-    set(JUCE_BUILD_EXAMPLES OFF)
+if(PLUGIN_ANALYSER_JUCE_SOURCE_DIR)
+    if(NOT EXISTS "${PLUGIN_ANALYSER_JUCE_SOURCE_DIR}/CMakeLists.txt")
+        message(FATAL_ERROR "PLUGIN_ANALYSER_JUCE_SOURCE_DIR does not contain JUCE: ${PLUGIN_ANALYSER_JUCE_SOURCE_DIR}")
+    endif()
+    message(STATUS "Using local JUCE checkout at ${PLUGIN_ANALYSER_JUCE_SOURCE_DIR}")
+    add_subdirectory(${PLUGIN_ANALYSER_JUCE_SOURCE_DIR} ${CMAKE_BINARY_DIR}/juce)
 elseif(PLUGIN_ANALYSER_USE_FETCH_JUCE)
-    message(STATUS "Local JUCE not found at ${JUCE_DIR}, downloading via FetchContent...")
+    message(STATUS "Downloading JUCE 8.0.10 via FetchContent...")
     include(FetchContent)
+    # 8.0.10 = commit 3af3ce009f6a02f6fa651008fffb5b41743a9fab. A release tarball (with checksum) instead of a
+    # git clone: reproducible, and avoids fetching JUCE's full history. 8.0.0 no longer builds against
+    # the macOS 15 SDK (CGWindowListCreateImage is obsoleted).
     FetchContent_Declare(
         juce
-        GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
-        GIT_TAG 8.0.0
+        URL https://github.com/juce-framework/JUCE/archive/refs/tags/8.0.10.tar.gz
+        URL_HASH SHA256=a84149d99dbb7ac04c0fc9a87ef0e61155416d6e13e09ae34bc7e829e1f650fd
     )
     FetchContent_MakeAvailable(juce)
 else()
@@ -35,7 +35,7 @@ endif()
 
 # Source files
 set(SOURCES
-    src/Main.cpp
+    src/main.cpp
     src/MainWindow.cpp
     src/MainWindow.h
     src/MainComponent.cpp
@@ -70,7 +70,8 @@ set(SOURCES
 )
 
 # Create GUI application
-add_executable(PluginAnalyser MACOSX_BUNDLE ${SOURCES})
+# WIN32: START_JUCE_APPLICATION defines WinMain on Windows, so the GUI app needs the Windows subsystem
+add_executable(PluginAnalyser WIN32 MACOSX_BUNDLE ${SOURCES})
 
 target_compile_definitions(PluginAnalyser
     PRIVATE

@@ -39,4 +39,5 @@ repos:
               echo "Warning: clang-format not found, skipping formatting"
               exit 0
             fi
+          - '--'  # becomes $0, so "$@" receives every filename
         pass_filenames: true
