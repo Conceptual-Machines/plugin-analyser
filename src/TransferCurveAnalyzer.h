@@ -23,6 +23,7 @@ private:
         std::vector<BinData> bins;
         std::map<juce::String, float> paramValues;
         float inputGainDb;
+        float maxInput = 1.0f;
     };
 
     std::map<int, RunBinData> perRunBins;
@@ -31,8 +32,8 @@ private:
     juce::File outputDir;
     juce::String signalType;
 
-    int getBinIndex(float x) const;
-    float getBinCenter(int binIndex) const;
+    int getBinIndex(float x, float maxInput) const;
+    float getBinCenter(int binIndex, float maxInput) const;
 };
 
 std::unique_ptr<Analyzer> createTransferCurveAnalyzer(const juce::File& outDir, int numBins,

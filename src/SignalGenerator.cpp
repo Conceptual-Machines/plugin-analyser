@@ -17,9 +17,7 @@ void SineGenerator::fillBlock(juce::AudioBuffer<float>& buffer, int numSamples) 
         }
     }
 
-    phase += phaseIncrement * numSamples;
-    if (phase > 2.0 * juce::MathConstants<double>::pi)
-        phase -= 2.0 * juce::MathConstants<double>::pi;
+    phase = std::fmod(phase + phaseIncrement * numSamples, 2.0 * juce::MathConstants<double>::pi);
 }
 
 void NoiseGenerator::fillBlock(juce::AudioBuffer<float>& buffer, int numSamples) {

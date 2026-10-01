@@ -10,17 +10,21 @@ TransferCurveAnalyzer::TransferCurveAnalyzer(const juce::File& outDir, int numBi
 
 TransferCurveAnalyzer::~TransferCurveAnalyzer() {}
 
-int TransferCurveAnalyzer::getBinIndex(float x) const {
-    // Map x from [-1, 1] to [0, numBins-1]
-    float normalized = (x + 1.0f) * 0.5f; // [0, 1]
-    int bin = (int)(normalized * numBins);
+int TransferCurveAnalyzer::getBinIndex(float x, float maxInput) const {
+    if (!(maxInput > 0.0f))
+        maxInput = 1.0f;
+    // Map x from [-maxInput, maxInput] to [0, numBins-1]
+    float normalized = (x + maxInput) / (2.0f * maxInput); // [0, 1]
+    int bin = (int)(normalized * (float)numBins);
     return std::clamp(bin, 0, numBins - 1);
 }
 
-float TransferCurveAnalyzer::getBinCenter(int binIndex) const {
-    // Inverse of getBinIndex
+float TransferCurveAnalyzer::getBinCenter(int binIndex, float maxInput) const {
+    if (!(maxInput > 0.0f))
+        maxInput = 1.0f;
+    // Inverse of getBinIndex: map [0, numBins-1] to [-maxInput, maxInput]
     float normalized = ((float)binIndex + 0.5f) / (float)numBins; // [0, 1]
-    return normalized * 2.0f - 1.0f;                              // [-1, 1]
+    return normalized * (2.0f * maxInput) - maxInput;             // [-maxInput, maxInput]
 }
 
 void TransferCurveAnalyzer::processBlock(const BlockContext& ctx) {
@@ -31,6 +35,9 @@ void TransferCurveAnalyzer::processBlock(const BlockContext& ctx) {
         runData.bins.resize(numBins);
         runData.paramValues = ctx.paramNamedValues;
         runData.inputGainDb = ctx.inputGainDb;
+        runData.maxInput = std::pow(10.0f, ctx.inputGainDb / 20.0f);
+        if (!(runData.maxInput > 0.0f))
+            runData.maxInput = 1.0f;
     }
 
     // Accumulate input->output mapping
@@ -38,7 +45,7 @@ void TransferCurveAnalyzer::processBlock(const BlockContext& ctx) {
         float x = ctx.inL[i];
         float y = ctx.outL[i];
 
-        int binIdx = getBinIndex(x);
+        int binIdx = getBinIndex(x, runData.maxInput);
         runData.bins[binIdx].sumY += (double)y;
         runData.bins[binIdx].count++;
     }
@@ -68,7 +75,7 @@ void TransferCurveAnalyzer::finish(const juce::File& outDir) {
             if (bin.count == 0)
                 continue;
 
-            float x = getBinCenter(binIdx);
+            float x = getBinCenter(binIdx, runData.maxInput);
             double meanY = bin.sumY / bin.count;
 
             out << runId << "," << binIdx << "," << x << "," << meanY << "," << bin.count;
